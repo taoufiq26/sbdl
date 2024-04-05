@@ -4,6 +4,7 @@ import pytest
 from pyspark import Row
 from pyspark.sql.types import StructField, StructType, StringType, NullType, TimestampType, ArrayType, DateType
 
+from lib.ConfigLoader import get_config
 from lib.Utils import get_spark_session
 
 
