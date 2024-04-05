@@ -1,6 +1,13 @@
-from pyspark.sql import SparkSession
 from pyspark import SparkConf
 import configparser
+import sys
+
+
+def get_run_env():
+    return sys.argv[1].upper()
+
+def get_load_date():
+    return sys.argv[2].upper()
 
 def get_config(env:str):
     config = configparser.ConfigParser()
