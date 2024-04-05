@@ -3,16 +3,14 @@ from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import *
 
 
-def load_data(spark: SparkSession, path: str, schema:StructType = None) -> DataFrame:
-    data = spark.read \
+def load_data(spark: SparkSession, path: str, schema:StructType, runtime_filter) -> DataFrame:
+    return spark.read \
         .format("csv") \
-        .option("header", True)
-    if schema:
-        data.schema(schema)
-    else:
-        data.option("inferSchema", True)
+        .option("header", True) \
+        .schema(schema) \
+        .load(path=path) \
+        .where(runtime_filter)
 
-    return data.load(path=path)
 
 
 def accounts_schema() -> StructType:
@@ -51,16 +49,28 @@ def adress_schema() -> StructType:
         StructField('address_start_date', TimestampType())
     ])
 
-def load_accounts(spark: SparkSession) -> DataFrame:
-    schema = accounts_schema()
-    return load_data(spark, "test_data/accounts/*", schema=schema)
+def load_accounts(spark: SparkSession, env, enable_hive, hive_db) -> DataFrame:
+    runtime_filter = ConfigLoader.get_data_filter(env, "account.filter")
+    if enable_hive:
+        return spark.sql("select * from " + hive_db + ".accounts").where(runtime_filter)
+    else:
+        schema = accounts_schema()
+        return load_data(spark, "test_data/accounts/*", schema=schema, runtime_filter=runtime_filter)
 
 
-def load_parties(spark: SparkSession) -> DataFrame:
-    schema = parties_schema()
-    return load_data(spark, path="test_data/parties/*", schema=schema)
+def load_parties(spark: SparkSession, env, enable_hive, hive_db) -> DataFrame:
+    runtime_filter = ConfigLoader.get_data_filter(env, "party.filter")
+    if enable_hive:
+        return spark.sql("select * from " + hive_db + ".parties").where(runtime_filter)
+    else:
+        schema = parties_schema()
+        return load_data(spark, path="test_data/parties/*", schema=schema, runtime_filter=runtime_filter)
 
 
-def load_adresses(spark: SparkSession) -> DataFrame:
-    schema = adress_schema()
-    return load_data(spark, path="test_data/party_address/*", schema=schema)
+def load_adresses(spark: SparkSession, env, enable_hive, hive_db) -> DataFrame:
+    runtime_filter = ConfigLoader.get_data_filter(env, "address.filter")
+    if enable_hive:
+        return spark.sql("select * from " + hive_db + ".party_address").where(runtime_filter)
+    else:
+        schema = adress_schema()
+        return load_data(spark, path="test_data/party_address/*", schema=schema, runtime_filter=runtime_filter)

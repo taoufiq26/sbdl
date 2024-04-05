@@ -26,3 +26,7 @@ def get_spark_conf(env:str):
     for(key, val) in config.items(env):
         spark_conf.set(key, val)
     return spark_conf
+
+def get_data_filter(env, data_filter):
+    conf = get_config(env)
+    return "true" if conf[data_filter] == "" else conf[data_filter]
