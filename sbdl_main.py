@@ -2,6 +2,7 @@ import sys
 import uuid
 
 from pyspark.sql.functions import to_json, struct, col
+from pyspark.sql.types import StringType
 
 from lib.logger import Log4J
 from lib import Utils, ConfigLoader
@@ -20,7 +21,6 @@ if __name__ == '__main__':
 
     print("Initializing SBDL Job in " + job_run_env + " Job ID: " + job_run_id)
     conf = ConfigLoader.get_config(job_run_env)
-    print(conf)
     enable_hive = True if conf["enable.hive"] == "true" else False
     hive_db = conf["hive.database"]
 
@@ -58,10 +58,30 @@ if __name__ == '__main__':
     final_df = Transformations.apply_header(spark, data_df)
 
     # Write Results Data to kafka
-    kafka_kv_df = final_df.select(col("payload.contractIdentifier.newValue").alias("key"),
+    kafka_kv_df = final_df.select(col("payload.contractIdentifier.newValue").alias("key").cast(StringType()),
                                   to_json(struct("*")).alias("value"))
 
-    kafka_kv_df.write.format("json").mode("overwrite").save("test_data/results/kafka_df/")
+    # kafka_kv_df.write.format("json").mode("overwrite").save("test_data/results/kafka_df/")
+    # Write Dataframe to Kafka Topic
+    logger.info("Sending data to Kafka...")
+    api_key = conf["kafka.api_key"]
+    api_secret = conf["kafka.api_secret"]
+    logger.info(kafka_kv_df.printSchema())
+
+
+    kafka_kv_df.write \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", conf["kafka.bootstrap.servers"]) \
+        .option("topic", conf["kafka.topic"]) \
+        .option("kafka.security.protocol", conf["kafka.security.protocol"]) \
+        .option("kafka.sasl.jaas.config", conf["kafka.sasl.jaas.config"].format(api_key, api_secret)) \
+        .option("kafka.sasl.mechanism", conf["kafka.sasl.mechanism"]) \
+        .option("kafka.client.dns.lookup", conf["kafka.client.dns.lookup"]) \
+        .save()
+
+    logger.info("Finished sendingdata to Kafka")
+
+
 
     input("Press enter to stop application...")
     logger.info("Stopping Application...")
